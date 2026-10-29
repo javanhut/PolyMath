@@ -1,4 +1,6 @@
 import katex from "katex";
+// Copying rendered math yields its LaTeX ("$4 \cdot 23$") instead of KaTeX's duplicated visual + MathML text.
+import "katex/contrib/copy-tex";
 import { memo, type ReactNode } from "react";
 
 export const Tex = memo(function Tex({ math, display = false }: { math: string; display?: boolean }) {
