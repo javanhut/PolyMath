@@ -1,0 +1,41 @@
+# PolyMath's build interface for ImLazy.
+
+[settings]
+default = "run"
+
+[variables]
+port = "4747"
+
+[commands]
+
+[commands.setup]
+desc = "Install Bun dependencies"
+alias = ["system-deps"]
+run = ["bun install --frozen-lockfile"]
+
+[commands.dev]
+desc = "Run PolyMath with hot reloading at http://localhost:4747"
+alias = ["d"]
+run = ["sh -c 'PORT={{port}} bun --hot src/index.ts'"]
+
+[commands.run]
+desc = "Run PolyMath at http://localhost:4747"
+run = ["sh -c 'NODE_ENV=production PORT={{port}} bun src/index.ts'"]
+
+[commands.build]
+desc = "Bundle the frontend into dist/"
+alias = ["b"]
+run = ["bun run build.ts"]
+
+[commands.test]
+desc = "Run the test suite (math engine, answer keys, progress store)"
+alias = ["t"]
+run = ["bun test"]
+
+[commands.check]
+desc = "Type check, then run the tests"
+run = ["bun check", "bun test"]
+
+[commands.clean]
+desc = "Remove build output"
+run = ["rm -rf dist"]
