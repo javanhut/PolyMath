@@ -7,6 +7,7 @@ import { MASTERY_STREAK } from "../shared";
 import { Choices, Feedback, StepList } from "./Blocks";
 import { MathInput } from "./MathInput";
 import { Inline } from "./RichText";
+import { Contour } from "./widgets/Contour";
 import { Diagram } from "./widgets/Diagram";
 import { Plot } from "./widgets/Plot";
 
@@ -95,7 +96,13 @@ export function Practice({ courseId, lesson }: { courseId: string; lesson: Lesso
 
       {problem.figure && (
         <div className="mb-4">
-          {problem.figure.kind === "diagram" ? <Diagram key={seed} {...problem.figure} /> : <Plot key={seed} {...problem.figure} />}
+          {problem.figure.kind === "diagram" ? (
+            <Diagram key={seed} {...problem.figure} />
+          ) : problem.figure.kind === "contour" ? (
+            <Contour key={seed} {...problem.figure} />
+          ) : (
+            <Plot key={seed} {...problem.figure} />
+          )}
         </div>
       )}
 

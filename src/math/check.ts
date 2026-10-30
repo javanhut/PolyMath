@@ -11,7 +11,7 @@
 import { evaluate, evaluateComplex, leafCount, literalFractions, parse, parseEquation, ParseError, variables, type Node } from "./expr";
 import { gcd } from "./random";
 
-export type AnswerForm = "expr" | "tuple" | "set" | "inequality";
+export type AnswerForm = "expr" | "tuple" | "set" | "inequality" | "matrix";
 
 export interface AnswerSpec {
   /** The expected answer, written in the syntax of `form`, e.g. "3/4", "(2, -3)", "2, -3", "x >= 4". Omit for text-only answers. */
@@ -40,6 +40,10 @@ export interface AnswerSpec {
   complex?: boolean;
   /** The prompt says the variables are positive, so only positive values are compared: log(x^2) = 2log(x). */
   positive?: boolean;
+  /** Antiderivatives: the answer may differ from the key by a constant, and a "+ C" is optional. */
+  upToConstant?: boolean;
+  /** A numeric key that was rounded: any value within this distance is accepted, e.g. 0.0005 for 3 decimal places. */
+  tolerance?: number;
 }
 
 export type Verdict =
@@ -282,7 +286,8 @@ export function splitTopLevel(s: string): string[] {
 
 /** "(a, b)" -> "a, b" when the outer brackets enclose the whole list. */
 function unwrapList(s: string): string {
-  const t = s.trim();
+  // Vectors may be written <1, 2> as well as (1, 2) or [1, 2].
+  const t = s.trim().replace(/^<(.*)>$/s, "($1)");
   if (!/^[([{]/.test(t) || !/[)\]}]$/.test(t)) return t;
   const inner = t.slice(1, -1);
   let depth = 0;
@@ -344,15 +349,78 @@ function formChecks(given: Node, expected: Node, spec: AnswerSpec): Verdict {
   return { status: "correct" };
 }
 
+/** Replace a variable by a number. */
+function bind(node: Node, name: string, value: number): Node {
+  switch (node.type) {
+    case "var":
+      return node.name === name ? { type: "num", value, text: String(value) } : node;
+    case "num":
+      return node;
+    case "neg":
+      return { ...node, arg: bind(node.arg, name, value) };
+    case "call":
+      return { ...node, arg: bind(node.arg, name, value), base: node.base && bind(node.base, name, value) };
+    case "bin":
+      return { ...node, left: bind(node.left, name, value), right: bind(node.right, name, value) };
+  }
+}
+
+/** Do the two expressions differ by a constant? (Equal derivatives, for antiderivative answers.) */
+function constantDifference(a: Node, b: Node): boolean {
+  const names = [...new Set([...variables(a), ...variables(b)])].filter((n) => n !== "e");
+  const diffs: number[] = [];
+  for (let i = 0; i < SAMPLES.length * 2; i++) {
+    const scope: Record<string, number> = {};
+    names.forEach((name, k) => {
+      const v = SAMPLES[(i + k * 5) % SAMPLES.length]!;
+      scope[name] = i >= SAMPLES.length ? Math.abs(v) : v;
+    });
+    const d = evaluate(a, scope) - evaluate(b, scope);
+    if (Number.isFinite(d)) diffs.push(d);
+  }
+  return diffs.length >= 4 && diffs.every((d) => Math.abs(d - diffs[0]!) <= 1e-7 * Math.max(1, Math.abs(diffs[0]!)));
+}
+
 function checkExpr(input: string, expectedText: string, spec: AnswerSpec): Verdict {
-  const given = stripAssignment(input);
+  let given = stripAssignment(input);
   const expected = parse(expectedText);
+  if (spec.upToConstant) {
+    // "x^3/3 + C": the constant of integration is any letter C (or K) not in the key.
+    for (const c of ["C", "K", "c"]) if (!variables(expected).has(c)) given = bind(given, c, 0);
+    if (!constantDifference(given, expected)) return { status: "incorrect" };
+    return formChecks(given, expected, spec);
+  }
+  if (spec.tolerance !== undefined && variables(given).size === 0 && variables(expected).size === 0) {
+    const [g, x] = [evaluate(given), evaluate(expected)];
+    if (!Number.isFinite(g)) return { status: "incorrect" };
+    return Math.abs(g - x) <= spec.tolerance + 1e-12 ? { status: "correct" } : { status: "incorrect" };
+  }
   const result = compare(given, expected, spec.complex, spec.positive);
   if (result === "close") {
     return { status: "incorrect", message: "That's a rounded decimal. Give the exact value, e.g. a fraction like 1/3 or sqrt(2)." };
   }
   if (result === "different") return { status: "incorrect" };
   return formChecks(given, expected, spec);
+}
+
+/** Rows of a matrix typed as [[1, 2], [3, 4]] or [1, 2; 3, 4]. */
+function matrixRows(text: string): string[][] {
+  let t = text.trim();
+  if (/^[([]/.test(t) && /[)\]]$/.test(t)) t = t.slice(1, -1).trim();
+  const rows = t.includes(";") ? t.split(";") : splitTopLevel(t);
+  return rows.map((row) => splitTopLevel(unwrapList(row)).map((s) => s.trim()).filter(Boolean));
+}
+
+function checkMatrix(input: string, spec: AnswerSpec): Verdict {
+  const expected = matrixRows(spec.answer!);
+  const given = matrixRows(input);
+  const shape = (m: string[][]) => `${m.length}×${m[0]?.length ?? 0}`;
+  if (shape(given) !== shape(expected) || given.some((r) => r.length !== expected[0]!.length)) {
+    return { status: "invalid", message: `The answer is a ${shape(expected)} matrix. Type it row by row, like [[1, 2], [3, 4]].` };
+  }
+  const verdicts = given.flatMap((row, i) => row.map((g, j) => checkExpr(g, expected[i]![j]!, spec)));
+  if (verdicts.every((v) => v.status === "correct")) return { status: "correct" };
+  return verdicts.find((v) => v.status === "unsimplified") ?? { status: "incorrect" };
 }
 
 function checkTuple(input: string, spec: AnswerSpec): Verdict {
@@ -521,6 +589,8 @@ export function checkAnswer(input: string, spec: AnswerSpec): Verdict {
         return checkSet(trimmed, spec);
       case "inequality":
         return checkInequality(trimmed, spec);
+      case "matrix":
+        return checkMatrix(trimmed, spec);
     }
   } catch (err) {
     return { status: "invalid", message: err instanceof ParseError ? err.message : "I couldn't read that answer." };

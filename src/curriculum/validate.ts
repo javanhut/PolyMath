@@ -7,7 +7,7 @@ import katex from "katex";
 import { checkAnswer, parseInequality, splitTopLevel } from "../math/check";
 import { evaluate, evaluateComplex, parse, parseEquation, variables, type Node } from "../math/expr";
 import { rng } from "../math/random";
-import { isWritten, type Block, type DiagramSpec, type Figure, type PlotSpec, type Problem, type Unit } from "./types";
+import { isWritten, type Block, type ContourSpec, type DiagramSpec, type Figure, type PlotSpec, type Problem, type SurfaceSpec, type Unit } from "./types";
 import type { AnswerSpec } from "../math/check";
 
 /** Turn the LaTeX the generators emit back into typed-answer syntax. */
@@ -23,8 +23,12 @@ export function latexToText(tex: string): string {
     .replace(/\\lt\b/g, "<")
     .replace(/\\gt\b/g, ">")
     .replace(/\\pi\b/g, "pi")
+    .replace(/\\theta\b/g, "t")
+    .replace(/\\arc(sin|cos|tan)(?![a-zA-Z])/g, " a$1")
+    // \sin^2 x means (sin x)^2.
+    .replace(/\\(sin|cos|tan|sec|csc|cot|sinh|cosh|tanh|ln|log)\^\{?(-?\d+)\}?\s*(\([^()]*\)|[a-zA-Z0-9]+)/g, "(($1($3))^($2))")
     // No \b: "_" is a word character, so \log_{2} must still match.
-    .replace(/\\(ln|log|sin|cos|tan|exp)(?![a-zA-Z])/g, " $1")
+    .replace(/\\(ln|log|sin|cos|tan|sec|csc|cot|sinh|cosh|tanh|exp)(?![a-zA-Z])/g, " $1")
     .replace(/\\binom\{([^{}]*)\}\{([^{}]*)\}/g, "(($1)!/(($2)!(($1)-($2))!))")
     .replace(/\\[lr]vert/g, "|")
     .replace(/\\(?:t|d)?frac/g, "\\frac");
@@ -75,7 +79,10 @@ function holds(pieces: string[], x: number, name: string): boolean {
 export function verifyProblem(p: Problem): boolean {
   if (!p.answer) return false;
   if (p.verify?.length) return verifyHidden(p);
-  const math = [...p.prompt.matchAll(/\$([^$]+)\$/g)].map((m) => latexToText(m[1]!));
+  const raw = [...p.prompt.matchAll(/\$([^$]+)\$/g)].map((m) => m[1]!);
+  const calculus = verifyCalculus(p, raw);
+  if (calculus !== null) return calculus;
+  const math = raw.map(latexToText);
   const verb = p.prompt.match(/^(Solve|Evaluate|Expand|Simplify|Use|Compute|Factor|Multiply|Find the value of)\b/)?.[1];
   if (!verb || math.length === 0) return false;
   const form = p.form ?? "expr";
@@ -169,21 +176,206 @@ function verifyHidden(p: Problem): boolean {
   if (!values.length) throw new Error(`verify equations aren't supported for form "${form}"`);
   for (const eq of p.verify!) {
     const [l, r] = parseEquation(eq);
-    const names = [...new Set([...variables(l), ...variables(r)])].filter((n) => !(p.complex && n === "i") && n !== "e").sort();
+    const skip = (n: string) => (p.complex && n === "i") || n === "e";
     for (const vals of values) {
+      // Letters the answer itself uses (x in "3x^2") stay free and are sampled: the equation must hold for every value.
+      const free = new Set(vals.flatMap((v) => [...variables(v)]).filter((n) => !skip(n)));
+      const names = [...new Set([...variables(l), ...variables(r)])].filter((n) => !skip(n) && !free.has(n)).sort();
       if (names.length !== vals.length) throw new Error(`verify equation "${eq}" has unknowns ${names.join(", ") || "(none)"} but the answer has ${vals.length} value(s)`);
       let [a, b] = [l, r];
       names.forEach((n, i) => {
         a = substitute(a, n, vals[i]!);
         b = substitute(b, n, vals[i]!);
       });
-      const [x, y] = [evaluateComplex(a), evaluateComplex(b)];
-      if (!(Math.hypot(x[0] - y[0], x[1] - y[1]) <= 1e-7 * Math.max(1, Math.hypot(x[0], x[1])))) {
-        throw new Error(`answer key "${p.answer}" fails verify equation "${eq}"`);
+      const freeNames = [...free];
+      const samples = freeNames.length ? SAMPLE_POINTS : [0];
+      let checked = 0;
+      for (const s of samples) {
+        const scope = Object.fromEntries(freeNames.map((n, k) => [n, s + 0.37 * k]));
+        const [x, y] = [evaluateComplex(a, scope), evaluateComplex(b, scope)];
+        if (![x[0], x[1], y[0], y[1]].every(Number.isFinite)) continue;
+        checked++;
+        if (!(Math.hypot(x[0] - y[0], x[1] - y[1]) <= 1e-7 * Math.max(1, Math.hypot(x[0], x[1])))) {
+          throw new Error(`answer key "${p.answer}" fails verify equation "${eq}"${freeNames.length ? ` at ${freeNames.map((n) => `${n} = ${scope[n]}`).join(", ")}` : ""}`);
+        }
       }
+      if (!checked) throw new Error(`verify equation "${eq}" is never defined for answer key "${p.answer}"`);
     }
   }
   return true;
+}
+
+const SAMPLE_POINTS = [0.53, -1.31, 2.17, -0.72, 1.46, 3.29, -2.58, 0.91];
+
+/** Numeric derivative of node with respect to name at the scope. */
+function derivativeAt(node: Node, name: string, scope: Record<string, number>): number {
+  const h = 1e-5 * Math.max(1, Math.abs(scope[name]!));
+  return (evaluate(node, { ...scope, [name]: scope[name]! + h }) - evaluate(node, { ...scope, [name]: scope[name]! - h })) / (2 * h);
+}
+
+/** Simpson's rule with 2000 strips; NaN when the integrand isn't finite somewhere. */
+function integrate(node: Node, name: string, a: number, b: number, scope: Record<string, number>): number {
+  const n = 2000;
+  const h = (b - a) / n;
+  let sum = 0;
+  for (let i = 0; i <= n; i++) {
+    const v = evaluate(node, { ...scope, [name]: a + i * h });
+    if (!Number.isFinite(v)) return NaN;
+    sum += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * v;
+  }
+  return (sum * h) / 3;
+}
+
+const close = (got: number, want: number, tol: number) => Math.abs(got - want) <= tol * Math.max(1, Math.abs(want));
+
+/**
+ * Derivative, integral and limit prompts, checked numerically. Returns null when the prompt isn't one of
+ * these shapes, true when the key held up; throws when it's wrong.
+ */
+function verifyCalculus(p: Problem, raw: string[]): boolean | null {
+  if ((p.form ?? "expr") !== "expr" || !p.answer || !raw.length) return null;
+  const fail = (why: string) => {
+    throw new Error(`answer key "${p.answer}" is wrong: ${why}`);
+  };
+  // "when x = 2" style bindings after the main expression.
+  const given: Record<string, number> = {};
+  for (const m of raw.slice(1)) {
+    const mm = m.match(/^\s*([a-zA-Z])\s*=\s*([^=]+)$/);
+    if (mm) {
+      try {
+        given[mm[1]!] = evaluate(parse(latexToText(mm[2]!)));
+      } catch {
+        /* not a plain number */
+      }
+    }
+  }
+  let answer: Node;
+  try {
+    answer = parse(p.answer);
+  } catch {
+    return null;
+  }
+  const scopes = (names: string[]) => SAMPLE_POINTS.map((s) => ({ ...Object.fromEntries(names.map((n, k) => [n, s + 0.41 * k])), ...given }));
+
+  // Derivatives: "Differentiate $E$", "Find the derivative of $E$", "Find $f'(x)$ ... $f(x) = E$",
+  // "Find $\frac{dy}{dx}$ ... $y = E$", "Find $\frac{\partial f}{\partial x}$ ... $f(x, y) = E$".
+  let dExpr: string | null = null;
+  let dVar: string | null = null;
+  if (/^(Differentiate|Find the derivative of)\b/.test(p.prompt)) {
+    dExpr = raw[0]!;
+    dVar = p.prompt.match(/with respect to \$([a-z])\$/)?.[1] ?? null;
+  } else {
+    const prime = raw[0]!.match(/^\s*([a-zA-Z])'\(([a-z])\)\s*$/);
+    const leibniz = raw[0]!.match(/^\s*\\frac\{(?:\\partial|d)\s*([a-zA-Z])\}\{(?:\\partial|d)\s*([a-z])\}\s*$/);
+    const m = prime ?? leibniz;
+    if (m && raw[1]) {
+      const def = raw[1].match(new RegExp(`^\\s*${m[1]}(?:\\([a-z, ]*\\))?\\s*=\\s*([\\s\\S]+)$`));
+      if (def) {
+        dExpr = def[1]!;
+        dVar = m[2]!;
+      }
+    }
+  }
+  if (dExpr !== null) {
+    let node: Node;
+    try {
+      node = parse(latexToText(dExpr));
+    } catch {
+      return null;
+    }
+    const vars = [...variables(node)].filter((v) => v !== "e");
+    const v = dVar ?? (vars.length === 1 ? vars[0]! : null);
+    if (!v) return null;
+    let checked = 0;
+    for (const scope of scopes([...new Set([v, ...vars, ...variables(answer)])].filter((n) => n !== "e"))) {
+      const want = derivativeAt(node, v, scope);
+      const got = evaluate(answer, scope);
+      if (!Number.isFinite(want) || !Number.isFinite(got)) continue;
+      checked++;
+      if (!close(got, want, 1e-4)) fail(`at ${v} = ${scope[v]} the derivative is ${want.toFixed(6)} but the key gives ${got.toFixed(6)}`);
+    }
+    return checked >= 3 ? true : null;
+  }
+
+  // Integrals: "$\int_{a}^{b} E \, dx$" (definite) or "$\int E \, dx$" (antiderivative).
+  const integral = raw
+    .map((r) => r.match(/\\int(?:_(?:\{([^{}]*)\}|(\S))\^(?:\{([^{}]*)\}|(\\?[a-zA-Z0-9]+|\S)))?\s*([\s\S]*?)\s*(?:\\[,;:!]\s*)*d([a-z])\s*$/))
+    .find(Boolean);
+  if (integral) {
+    const [lo, hi, body, v] = [integral[1] ?? integral[2], integral[3] ?? integral[4], integral[5], integral[6]];
+    let node: Node;
+    try {
+      node = parse(latexToText(body!));
+    } catch {
+      return null;
+    }
+    const others = [...new Set([...variables(node), ...variables(answer)])].filter((n) => n !== "e" && n !== v && !["C", "K", "c"].includes(n));
+    if (lo !== undefined && hi !== undefined) {
+      let a: number;
+      let b: number;
+      try {
+        [a, b] = [evaluate(parse(latexToText(lo))), evaluate(parse(latexToText(hi)))];
+      } catch {
+        return null;
+      }
+      if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+      let checked = 0;
+      for (const scope of scopes(others)) {
+        const want = integrate(node, v!, a, b, scope);
+        const got = evaluate(answer, scope);
+        if (!Number.isFinite(want) || !Number.isFinite(got)) continue;
+        checked++;
+        if (!close(got, want, 1e-5)) fail(`the integral is about ${want.toFixed(6)} but the key gives ${got.toFixed(6)}`);
+        if (!others.length) break;
+      }
+      return checked > 0 ? true : null;
+    }
+    // Antiderivative: the key's derivative must be the integrand (any constant C is dropped).
+    let F = answer;
+    for (const c of ["C", "K", "c"]) F = substitute(F, c, { type: "num", value: 0, text: "0" });
+    let checked = 0;
+    for (const scope of scopes([v!, ...others])) {
+      const want = evaluate(node, scope);
+      const got = derivativeAt(F, v!, scope);
+      if (!Number.isFinite(want) || !Number.isFinite(got)) continue;
+      checked++;
+      if (!close(got, want, 1e-4)) fail(`at ${v} = ${scope[v!]} the key's derivative is ${got.toFixed(6)} but the integrand is ${want.toFixed(6)}`);
+    }
+    return checked >= 3 ? true : null;
+  }
+
+  // Limits: "$\lim_{x \to a} E$", with a possibly \infty, -\infty, or a^+ / a^-.
+  const limit = raw[0]!.match(/^\s*\\lim_\{?\s*([a-z])\s*\\to\s*(-?\\infty|[^{}^]+?)\s*(?:\^\{?([+-])\}?)?\s*\}?\s*([\s\S]+)$/);
+  if (limit) {
+    const [, v, target, side, body] = limit;
+    let node: Node;
+    let want: number;
+    try {
+      node = parse(latexToText(body!));
+      want = evaluate(answer);
+    } catch {
+      return null;
+    }
+    if (!Number.isFinite(want) || variables(answer).size) return null;
+    const infinite = /\\infty/.test(target!);
+    let a = 0;
+    if (!infinite) {
+      try {
+        a = evaluate(parse(latexToText(target!)));
+      } catch {
+        return null;
+      }
+      if (!Number.isFinite(a)) return null;
+    }
+    const sign = target!.startsWith("-") ? -1 : 1;
+    const approaches = infinite ? [1e3, 1e5, 1e7].map((m) => [sign * m]) : [1e-3, 1e-5, 1e-7].map((h) => (side === "+" ? [a + h] : side === "-" ? [a - h] : [a - h, a + h]));
+    const errs = approaches.map((xs) => Math.max(...xs.map((x) => Math.abs(evaluate(node, { [v!]: x }) - want))));
+    if (errs.some((e) => !Number.isFinite(e))) return null;
+    const last = errs[errs.length - 1]!;
+    if (!(last <= 1e-3 * Math.max(1, Math.abs(want)) && last <= errs[0]! + 1e-9)) fail(`as ${v} approaches ${target}${side ?? ""} the expression nears ${(evaluate(node, { [v!]: approaches[2]![0]! })).toFixed(6)}, not ${want}`);
+    return true;
+  }
+  return null;
 }
 
 // ── Static checks ───────────────────────────────────────────────────────────
@@ -309,11 +501,82 @@ function plotErrors(block: PlotSpec): string[] {
   }
   for (const p of block.params ?? []) if (p.tex) errs.push(...texErrors(p.tex));
   if (block.x[0] >= block.x[1] || block.y[0] >= block.y[1]) errs.push("plot ranges must be [low, high]");
+  const expr = (what: string, e: string, allowed: string[]) => {
+    try {
+      const unknown = [...variables(parse(e))].filter((v) => v !== "e" && !allowed.includes(v) && !(v in scope));
+      if (unknown.length) errs.push(`${what} "${e}" uses ${unknown.join(", ")}, which isn't ${allowed.join("/")} or a slider`);
+    } catch (err) {
+      errs.push(`${what} "${e}" doesn't parse: ${(err as Error).message}`);
+    }
+  };
+  const num = (what: string, v: number | string) => typeof v === "string" && expr(what, v, []);
+  for (const s of block.shade ?? []) {
+    expr("shade", s.expr, ["x"]);
+    if (s.under) expr("shade under", s.under, ["x"]);
+    num("shade bound", s.from);
+    num("shade bound", s.to);
+  }
+  if (block.riemann) {
+    expr("riemann", block.riemann.expr, ["x"]);
+    num("riemann bound", block.riemann.from);
+    num("riemann bound", block.riemann.to);
+    num("riemann n", block.riemann.n);
+  }
+  if (block.field) {
+    expr("field dx", block.field.dx, ["x", "y"]);
+    expr("field dy", block.field.dy, ["x", "y"]);
+  }
+  for (const c of block.parametric ?? []) {
+    expr("parametric x", c.x, ["t"]);
+    expr("parametric y", c.y, ["t"]);
+    if (c.t[0] >= c.t[1]) errs.push(`parametric t range must be [low, high]`);
+    if (c.label) errs.push(...texErrors(label(c.label)));
+  }
+  for (const v of block.vlines ?? []) num("vline", v.x);
+  for (const h of block.hlines ?? []) num("hline", h.y);
+  return errs;
+}
+
+function surfaceErrors(block: ContourSpec | SurfaceSpec): string[] {
+  const errs: string[] = [];
+  const scope = Object.fromEntries((block.params ?? []).map((p) => [p.name, p.value]));
+  const label = (t: string) => t.replace(/\{=([^{}]+)\}/g, "1").replace(/\{(\w+)\}/g, "1");
+  try {
+    const node = parse(block.expr);
+    const unknown = [...variables(node)].filter((v) => !["x", "y", "e"].includes(v) && !(v in scope));
+    if (unknown.length) errs.push(`surface "${block.expr}" uses ${unknown.join(", ")}, which isn't x, y or a slider`);
+    let finite = 0;
+    for (let i = 0; i <= 10; i++) {
+      for (let j = 0; j <= 10; j++) {
+        const x = block.x[0] + ((block.x[1] - block.x[0]) * i) / 10;
+        const y = block.y[0] + ((block.y[1] - block.y[0]) * j) / 10;
+        if (Number.isFinite(evaluate(node, { ...scope, x, y }))) finite++;
+      }
+    }
+    if (!finite) errs.push(`surface "${block.expr}" is never finite on its ranges`);
+  } catch (err) {
+    errs.push(`surface "${block.expr}" doesn't parse: ${(err as Error).message}`);
+  }
+  if (block.x[0] >= block.x[1] || block.y[0] >= block.y[1]) errs.push("surface ranges must be [low, high]");
+  for (const p of block.params ?? []) if (p.tex) errs.push(...texErrors(p.tex));
+  if ("points" in block || "arrows" in block) {
+    for (const p of [...(block.points ?? []), ...(block.arrows ?? [])]) {
+      for (const v of Object.values(p)) {
+        if (typeof v !== "string" || v === p.label) continue;
+        try {
+          if (!Number.isFinite(evaluate(parse(v), scope))) errs.push(`contour coordinate "${v}" isn't a number`);
+        } catch {
+          errs.push(`contour coordinate "${v}" doesn't parse`);
+        }
+      }
+      if (p.label) errs.push(...texErrors(label(p.label)));
+    }
+  }
   return errs;
 }
 
 export function figureErrors(f: Figure): string[] {
-  return f.kind === "diagram" ? diagramErrors(f) : plotErrors(f);
+  return f.kind === "diagram" ? diagramErrors(f) : f.kind === "contour" ? surfaceErrors(f) : plotErrors(f);
 }
 
 function blockErrors(block: Block): string[] {
@@ -356,6 +619,11 @@ function blockErrors(block: Block): string[] {
     case "diagram":
       text(block.caption);
       errs.push(...diagramErrors(block));
+      break;
+    case "contour":
+    case "surface":
+      text(block.caption);
+      errs.push(...surfaceErrors(block));
       break;
     case "proof":
       text(block.title);

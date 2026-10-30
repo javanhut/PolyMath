@@ -5,7 +5,9 @@ import { MathInput } from "./MathInput";
 import { Inline, RichText, Tex } from "./RichText";
 import { AreaModel } from "./widgets/AreaModel";
 import { BalanceScale } from "./widgets/BalanceScale";
+import { Contour } from "./widgets/Contour";
 import { Diagram } from "./widgets/Diagram";
+import { Surface } from "./widgets/Surface";
 import { NumberLine, Plot } from "./widgets/Plot";
 
 function Callout({ tone, label, title, body }: { tone: "why" | "key"; label: string; title: string; body: string }) {
@@ -235,6 +237,10 @@ export function LessonBlock({ block }: { block: Block }) {
       return <NumberLine {...block} />;
     case "diagram":
       return <Diagram {...block} />;
+    case "contour":
+      return <Contour {...block} />;
+    case "surface":
+      return <Surface {...block} />;
     case "proof":
       return <Proof {...block} />;
   }

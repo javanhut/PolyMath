@@ -38,8 +38,9 @@ export function Slider({ label, value, min, max, step, onChange }: { label: Reac
   );
 }
 
-export function Plot({ x: [x0, x1], y: [y0, y1], curves = [], points = [], vlines = [], params = [], caption }: PlotSpec) {
+export function Plot({ x: [x0, x1], y: [y0, y1], curves = [], points = [], vlines = [], hlines = [], shade = [], riemann, field, parametric = [], params = [], caption }: PlotSpec) {
   const clip = useId();
+  const arrow = useId();
   const [values, setValues] = useState<Record<string, number>>(() => Object.fromEntries(params.map((p) => [p.name, p.value])));
   const compiled = useMemo(() => curves.map((c) => parse(c.expr)), [curves]);
 
@@ -81,6 +82,90 @@ export function Plot({ x: [x0, x1], y: [y0, y1], curves = [], points = [], vline
       .replace(/\{=([^{}]+)\}/g, (_, e: string) => fmt(evaluate(parse(e), values)))
       .replace(/\{(\w+)\}/g, (m, name: string) => (name in values ? fmt(values[name]!) : m));
   const legend = curves.filter((c) => c.label);
+  const pt = (x: number, y: number) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`;
+  const clampY = (y: number) => Math.min(y1 + (y1 - y0), Math.max(y0 - (y1 - y0), y));
+
+  /** Polygon between two curves on [a, b]. */
+  const region = (top: Node, bottom: Node, a: number, b: number) => {
+    const N = 200;
+    const up: string[] = [];
+    const down: string[] = [];
+    for (let i = 0; i <= N; i++) {
+      const x = a + ((b - a) * i) / N;
+      const t = evaluate(top, { ...values, x });
+      const u = evaluate(bottom, { ...values, x });
+      if (Number.isFinite(t) && Number.isFinite(u)) {
+        up.push(pt(x, clampY(t)));
+        down.unshift(pt(x, clampY(u)));
+      }
+    }
+    return [...up, ...down].join(" ");
+  };
+
+  const rects = () => {
+    if (!riemann) return null;
+    const f = parse(riemann.expr);
+    const [a, b] = [coord(riemann.from, values), coord(riemann.to, values)];
+    const n = Math.max(1, Math.round(coord(riemann.n, values)));
+    const dx = (b - a) / n;
+    const color = SERIES[riemann.color ?? 1];
+    const method = riemann.method ?? "left";
+    return Array.from({ length: n }, (_, i) => {
+      const l = a + i * dx;
+      const r = l + dx;
+      const at = method === "left" ? l : method === "right" ? r : method === "midpoint" ? (l + r) / 2 : l;
+      if (method === "trapezoid") {
+        const [hl, hr] = [evaluate(f, { ...values, x: l }), evaluate(f, { ...values, x: r })];
+        if (!Number.isFinite(hl) || !Number.isFinite(hr)) return null;
+        return <polygon key={i} points={`${pt(l, 0)} ${pt(l, clampY(hl))} ${pt(r, clampY(hr))} ${pt(r, 0)}`} fill={color} fillOpacity={0.22} stroke={color} strokeWidth={1} />;
+      }
+      const h = evaluate(f, { ...values, x: at });
+      if (!Number.isFinite(h)) return null;
+      return <polygon key={i} points={`${pt(l, 0)} ${pt(l, clampY(h))} ${pt(r, clampY(h))} ${pt(r, 0)}`} fill={color} fillOpacity={0.22} stroke={color} strokeWidth={1} />;
+    });
+  };
+
+  const arrows = () => {
+    if (!field) return null;
+    const [fx, fy] = [parse(field.dx), parse(field.dy)];
+    const n = field.density ?? 16;
+    const stepX = (x1 - x0) / n;
+    const stepY = (y1 - y0) / Math.max(4, Math.round((n * innerH) / (W - 2 * M)));
+    const len = Math.min(stepX * unit, stepY * unit) * 0.7;
+    const color = SERIES[field.color ?? 1];
+    const out: ReactNode[] = [];
+    for (let x = x0 + stepX / 2; x < x1; x += stepX) {
+      for (let y = y0 + stepY / 2; y < y1; y += stepY) {
+        const [u, v] = [evaluate(fx, { ...values, x, y }), evaluate(fy, { ...values, x, y })];
+        const m = Math.hypot(u, v);
+        if (!Number.isFinite(m) || m === 0) continue;
+        const [cx, cy] = [sx(x), sy(y)];
+        const [ex, ey] = [(u / m) * len, (-v / m) * len];
+        out.push(<line key={`${x},${y}`} x1={cx - ex / 2} y1={cy - ey / 2} x2={cx + ex / 2} y2={cy + ey / 2} stroke={color} strokeWidth={1.3} markerEnd={`url(#${arrow})`} />);
+      }
+    }
+    return out;
+  };
+
+  const paramPath = (c: { x: string; y: string; t: [number, number] }) => {
+    const [fx, fy] = [parse(c.x), parse(c.y)];
+    const span = Math.max(x1 - x0, y1 - y0);
+    let d = "";
+    let pen = false;
+    const N = 800;
+    for (let i = 0; i <= N; i++) {
+      const t = c.t[0] + ((c.t[1] - c.t[0]) * i) / N;
+      const [x, y] = [evaluate(fx, { ...values, t }), evaluate(fy, { ...values, t })];
+      const ok = Number.isFinite(x) && Number.isFinite(y) && Math.abs(x) < 10 * span + Math.abs(x0) + Math.abs(x1) && Math.abs(y) < 10 * span + Math.abs(y0) + Math.abs(y1);
+      if (!ok) {
+        pen = false;
+        continue;
+      }
+      d += `${pen ? "L" : "M"}${pt(x, y)}`;
+      pen = true;
+    }
+    return d;
+  };
 
   return (
     <figure className="rounded-xl border border-line bg-surface p-4">
@@ -89,6 +174,9 @@ export function Plot({ x: [x0, x1], y: [y0, y1], curves = [], points = [], vline
           <clipPath id={clip}>
             <rect x={M} y={M} width={W - 2 * M} height={innerH} />
           </clipPath>
+          <marker id={arrow} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill={SERIES[field?.color ?? 1]} />
+          </marker>
         </defs>
         <g stroke="var(--line)" strokeWidth={1}>
           {ticks(x0, x1, xStep).map((v) => (
@@ -125,8 +213,19 @@ export function Plot({ x: [x0, x1], y: [y0, y1], curves = [], points = [], vline
           </text>
         </g>
         <g clipPath={`url(#${clip})`}>
+          {shade.map((s, i) => (
+            <polygon key={`s${i}`} points={region(parse(s.expr), parse(s.under ?? "0"), coord(s.from, values), coord(s.to, values))} fill={SERIES[s.color ?? 1]} fillOpacity={0.18} />
+          ))}
+          {rects()}
+          {arrows()}
           {vlines.map((v, i) => (
-            <line key={`v${i}`} x1={sx(v.x)} y1={M} x2={sx(v.x)} y2={M + innerH} stroke="var(--muted)" strokeWidth={1.5} strokeDasharray="5 4" />
+            <line key={`v${i}`} x1={sx(coord(v.x, values))} y1={M} x2={sx(coord(v.x, values))} y2={M + innerH} stroke="var(--muted)" strokeWidth={1.5} strokeDasharray="5 4" />
+          ))}
+          {hlines.map((h, i) => (
+            <line key={`h${i}`} x1={M} y1={sy(coord(h.y, values))} x2={W - M} y2={sy(coord(h.y, values))} stroke="var(--muted)" strokeWidth={1.5} strokeDasharray="5 4" />
+          ))}
+          {parametric.map((c, i) => (
+            <path key={`q${i}`} d={paramPath(c)} fill="none" stroke={SERIES[c.color ?? (((i % 4) + 1) as SeriesColor)]} strokeWidth={2.5} strokeDasharray={c.dashed ? "7 5" : undefined} strokeLinejoin="round" />
           ))}
           {curves.map((c, i) => (
             <path
@@ -147,7 +246,7 @@ export function Plot({ x: [x0, x1], y: [y0, y1], curves = [], points = [], vline
           })}
         </g>
       </svg>
-      {(legend.length > 0 || points.some((p) => p.label)) && (
+      {(legend.length > 0 || points.some((p) => p.label) || parametric.some((c) => c.label)) && (
         <div className="mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1 text-[15px]">
           {legend.map((c, i) => (
             <span key={i} className="flex items-center gap-2">
@@ -155,6 +254,14 @@ export function Plot({ x: [x0, x1], y: [y0, y1], curves = [], points = [], vline
               <Tex math={label(c.label!)} />
             </span>
           ))}
+          {parametric
+            .filter((c) => c.label)
+            .map((c, i) => (
+              <span key={`ql${i}`} className="flex items-center gap-2">
+                <span className="inline-block h-1 w-5 rounded" style={{ background: SERIES[c.color ?? (((parametric.indexOf(c) % 4) + 1) as SeriesColor)] }} />
+                <Tex math={label(c.label!)} />
+              </span>
+            ))}
           {points
             .filter((p) => p.label)
             .map((p, i) => (

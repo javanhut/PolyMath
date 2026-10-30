@@ -197,6 +197,35 @@ describe("algebra 2 answers", () => {
     expect(status("(-32)^(2/5)", { answer: "4" })).toBe("correct");
   });
 
+  test("antiderivatives up to a constant", () => {
+    const spec = { answer: "x^3/3", upToConstant: true };
+    expect(status("x^3/3 + C", spec)).toBe("correct");
+    expect(status("(1/3)x^3 + 7", spec)).toBe("correct");
+    expect(status("x^3/3", spec)).toBe("correct");
+    expect(status("x^2", spec)).toBe("incorrect");
+  });
+
+  test("tolerance accepts rounded answers", () => {
+    expect(status("2.7268", { answer: "2.727", tolerance: 0.0005 })).toBe("correct");
+    expect(status("2.73", { answer: "2.727", tolerance: 0.0005 })).toBe("incorrect");
+  });
+
+  test("matrices and vectors", () => {
+    const m = { answer: "[[1, 2], [3, 4]]", form: "matrix" as const };
+    expect(status("[[1,2],[3,4]]", m)).toBe("correct");
+    expect(status("[1, 2; 3, 4]", m)).toBe("correct");
+    expect(status("[[1,2],[3,5]]", m)).toBe("incorrect");
+    expect(status("[[1,2,3]]", m)).toBe("invalid");
+    expect(status("<3, 4>", { answer: "(3, 4)", form: "tuple" })).toBe("correct");
+  });
+
+  test("more functions and theta", () => {
+    expect(status("sec(x)^2", { answer: "1/cos(x)^2" })).toBe("correct");
+    expect(status("sinh(1)", { answer: "(e - 1/e)/2" })).toBe("correct");
+    expect(status("cbrt(-8)", { answer: "-2" })).toBe("correct");
+    expect(status("sin(theta)", { answer: "sin(t)" })).toBe("correct");
+  });
+
   test("positive compares only where the variables are positive", () => {
     expect(status("2log(x)", { answer: "log(x^2)" })).toBe("incorrect");
     expect(status("2log(x)", { answer: "log(x^2)", positive: true })).toBe("correct");

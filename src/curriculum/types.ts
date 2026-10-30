@@ -32,12 +32,16 @@ export type Block =
   | ({ kind: "plot" } & PlotSpec)
   /** A number line with shaded intervals, for inequalities. */
   | ({ kind: "numberline" } & NumberLineSpec)
+  /** Level curves of a function of two variables. */
+  | ({ kind: "contour" } & ContourSpec)
+  /** A turnable wireframe surface z = f(x, y). */
+  | ({ kind: "surface" } & SurfaceSpec)
   /** A geometry figure: named points, segments, polygons, circles, angle marks. */
   | ({ kind: "diagram" } & DiagramSpec)
   /** A two-column proof, revealed one line at a time. Statements and reasons are markup. */
   | { kind: "proof"; title: string; given: string; prove: string; steps: { statement: string; reason: string }[] };
 
-export type Figure = ({ kind: "diagram" } & DiagramSpec) | ({ kind: "plot" } & PlotSpec);
+export type Figure = ({ kind: "diagram" } & DiagramSpec) | ({ kind: "plot" } & PlotSpec) | ({ kind: "contour" } & ContourSpec);
 
 /** Series colours: 1 accent blue, 2 orange, 3 green, 4 red. */
 export type SeriesColor = 1 | 2 | 3 | 4;
@@ -51,12 +55,49 @@ export interface PlotSpec {
   /** Coordinates may be numbers or expressions in slider names. Labels are LaTeX. */
   points?: { x: number | string; y: number | string; label?: string; open?: boolean; color?: SeriesColor }[];
   /** Dashed vertical lines, e.g. asymptotes or x = c. */
-  vlines?: { x: number; label?: string }[];
+  vlines?: { x: number | string; label?: string }[];
+  /** Dashed horizontal lines, e.g. y = L. */
+  hlines?: { y: number | string; label?: string }[];
+  /** Shaded regions between a curve and `under` (default the x-axis) on [from, to]. Bounds may use slider names. */
+  shade?: { expr: string; under?: string; from: number | string; to: number | string; color?: SeriesColor }[];
+  /** Riemann rectangles (or trapezoids) under y = expr on [from, to]. `n` may be a slider name. */
+  riemann?: { expr: string; from: number | string; to: number | string; n: number | string; method?: "left" | "right" | "midpoint" | "trapezoid"; color?: SeriesColor };
+  /** A slope or vector field: arrows (dx, dy) in x, y and slider names. For a slope field use dx: "1", dy: "x - y". */
+  field?: { dx: string; dy: string; density?: number; color?: SeriesColor };
+  /** Parametric curves x(t), y(t) for t in [t0, t1]; polar curves are written as r(t) cos(t), r(t) sin(t). */
+  parametric?: { x: string; y: string; t: [number, number]; label?: string; color?: SeriesColor; dashed?: boolean }[];
   /**
    * Sliders. `label` is plain text; `tex` is a LaTeX label shown instead.
    * In labels, {name} becomes the slider's value and {=expr} the value of an expression in slider names.
    */
   params?: { name: string; label?: string; tex?: string; min: number; max: number; step: number; value: number }[];
+  caption?: string;
+}
+
+/** Level curves of z = f(x, y). */
+export interface ContourSpec {
+  x: [number, number];
+  y: [number, number];
+  /** f(x, y), in x, y and slider names. */
+  expr: string;
+  /** Values of f to draw; chosen automatically when omitted. */
+  levels?: number[];
+  points?: { x: number | string; y: number | string; label?: string; color?: SeriesColor }[];
+  /** Arrows drawn from a point, e.g. a gradient vector. Components may use slider names. */
+  arrows?: { x: number | string; y: number | string; dx: number | string; dy: number | string; label?: string; color?: SeriesColor }[];
+  params?: PlotSpec["params"];
+  caption?: string;
+}
+
+/** A wireframe of z = f(x, y) that the learner can turn. */
+export interface SurfaceSpec {
+  x: [number, number];
+  y: [number, number];
+  /** Fixed z range; computed from the samples when omitted. */
+  z?: [number, number];
+  /** f(x, y), in x, y and slider names. */
+  expr: string;
+  params?: PlotSpec["params"];
   caption?: string;
 }
 

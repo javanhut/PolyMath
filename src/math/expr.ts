@@ -5,7 +5,7 @@
 // factorials ("5!"), and complex evaluation where i is the imaginary unit.
 
 export type BinOp = "+" | "-" | "*" | "/" | "^";
-export type FnName = "sqrt" | "abs" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "ln" | "log" | "exp" | "fact";
+export type FnName = "sqrt" | "cbrt" | "abs" | "sin" | "cos" | "tan" | "sec" | "csc" | "cot" | "asin" | "acos" | "atan" | "sinh" | "cosh" | "tanh" | "ln" | "log" | "exp" | "fact";
 
 export type Node =
   | { type: "num"; value: number; text: string }
@@ -24,9 +24,11 @@ type Token =
   | { kind: "op"; op: "+" | "-" | "*" | "/" | "^" | "(" | ")" | "|" | "=" | "_" | "!" };
 
 // "fact" is produced by a postfix "!", never typed by name.
-const FUNCTIONS: FnName[] = ["sqrt", "abs", "asin", "acos", "atan", "sin", "cos", "tan", "ln", "log", "exp"];
-// Longest names first so "sqrt" wins over "s", "q", ... and "pi" over "p", "i".
-const NAMES = [...FUNCTIONS, "pi"].sort((a, b) => b.length - a.length);
+const FUNCTIONS: FnName[] = ["sqrt", "cbrt", "abs", "asin", "acos", "atan", "sinh", "cosh", "tanh", "sin", "cos", "tan", "sec", "csc", "cot", "ln", "log", "exp"];
+// Greek letters typed by name stand for a single-letter variable: theta is t.
+const GREEK: Record<string, string> = { theta: "t", alpha: "a", beta: "b", phi: "p", omega: "w" };
+// Longest names first so "sqrt" wins over "s", "q", ..., "sinh" over "sin" and "pi" over "p", "i".
+const NAMES = [...FUNCTIONS, "pi", ...Object.keys(GREEK)].sort((a, b) => b.length - a.length);
 
 const SYMBOLS: Record<string, string> = {
   "×": "*",
@@ -41,6 +43,8 @@ const SYMBOLS: Record<string, string> = {
   "³": "^3",
   // Angles are answered in degrees; the symbol is optional.
   "°": "",
+  θ: "t",
+  "∞": "inf",
 };
 
 export function tokenize(source: string): Token[] {
@@ -73,6 +77,9 @@ export function tokenize(source: string): Token[] {
         if (name === "pi") {
           tokens.push({ kind: "num", value: Math.PI, text: "pi" });
           j += 2;
+        } else if (name && name in GREEK) {
+          tokens.push({ kind: "var", name: GREEK[name]! });
+          j += name.length;
         } else if (name) {
           tokens.push({ kind: "fn", name: name as FnName });
           j += name.length;
@@ -266,6 +273,8 @@ export function evaluate(node: Node, scope: Record<string, number> = {}): number
       switch (node.fn) {
         case "sqrt":
           return Math.sqrt(x);
+        case "cbrt":
+          return Math.cbrt(x);
         case "abs":
           return Math.abs(x);
         case "sin":
@@ -274,6 +283,18 @@ export function evaluate(node: Node, scope: Record<string, number> = {}): number
           return Math.cos(x);
         case "tan":
           return Math.tan(x);
+        case "sec":
+          return 1 / Math.cos(x);
+        case "csc":
+          return 1 / Math.sin(x);
+        case "cot":
+          return 1 / Math.tan(x);
+        case "sinh":
+          return Math.sinh(x);
+        case "cosh":
+          return Math.cosh(x);
+        case "tanh":
+          return Math.tanh(x);
         case "asin":
           return Math.asin(x);
         case "acos":
@@ -457,6 +478,7 @@ export function toLatex(node: Node): string {
     case "call": {
       const arg = toLatex(node.arg);
       if (node.fn === "sqrt") return `\\sqrt{${arg}}`;
+      if (node.fn === "cbrt") return `\\sqrt[3]{${arg}}`;
       if (node.fn === "abs") return `\\left|${arg}\\right|`;
       if (node.fn === "exp") return `e^{${arg}}`;
       if (node.fn === "fact") return `${wrap(arg, prec(node.arg) < PREC.atom || node.arg.type === "call")}!`;

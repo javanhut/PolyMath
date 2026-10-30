@@ -24,7 +24,53 @@ import { unit5 as algebra2Unit5 } from "./algebra2/unit5";
 import { unit6 as algebra2Unit6 } from "./algebra2/unit6";
 import { unit7 as algebra2Unit7 } from "./algebra2/unit7";
 import { unit8 as algebra2Unit8 } from "./algebra2/unit8";
-import { isWritten, plannedUnit, type Course, type Lesson } from "./types";
+import { unit1 as trigonometryUnit1 } from "./trigonometry/unit1";
+import { unit2 as trigonometryUnit2 } from "./trigonometry/unit2";
+import { unit3 as trigonometryUnit3 } from "./trigonometry/unit3";
+import { unit4 as trigonometryUnit4 } from "./trigonometry/unit4";
+import { unit5 as trigonometryUnit5 } from "./trigonometry/unit5";
+import { unit6 as trigonometryUnit6 } from "./trigonometry/unit6";
+import { unit7 as trigonometryUnit7 } from "./trigonometry/unit7";
+import { unit8 as trigonometryUnit8 } from "./trigonometry/unit8";
+import { unit1 as algebra3Unit1 } from "./algebra3/unit1";
+import { unit2 as algebra3Unit2 } from "./algebra3/unit2";
+import { unit3 as algebra3Unit3 } from "./algebra3/unit3";
+import { unit4 as algebra3Unit4 } from "./algebra3/unit4";
+import { unit5 as algebra3Unit5 } from "./algebra3/unit5";
+import { unit6 as algebra3Unit6 } from "./algebra3/unit6";
+import { unit7 as algebra3Unit7 } from "./algebra3/unit7";
+import { unit8 as algebra3Unit8 } from "./algebra3/unit8";
+import { unit1 as calculus1Unit1 } from "./calculus1/unit1";
+import { unit2 as calculus1Unit2 } from "./calculus1/unit2";
+import { unit3 as calculus1Unit3 } from "./calculus1/unit3";
+import { unit4 as calculus1Unit4 } from "./calculus1/unit4";
+import { unit5 as calculus1Unit5 } from "./calculus1/unit5";
+import { unit6 as calculus1Unit6 } from "./calculus1/unit6";
+import { unit1 as calculus2Unit1 } from "./calculus2/unit1";
+import { unit2 as calculus2Unit2 } from "./calculus2/unit2";
+import { unit3 as calculus2Unit3 } from "./calculus2/unit3";
+import { unit4 as calculus2Unit4 } from "./calculus2/unit4";
+import { unit5 as calculus2Unit5 } from "./calculus2/unit5";
+import { unit1 as calculus3Unit1 } from "./calculus3/unit1";
+import { unit2 as calculus3Unit2 } from "./calculus3/unit2";
+import { unit3 as calculus3Unit3 } from "./calculus3/unit3";
+import { unit4 as calculus3Unit4 } from "./calculus3/unit4";
+import { unit5 as calculus3Unit5 } from "./calculus3/unit5";
+import { unit1 as linearAlgebraUnit1 } from "./linearalgebra/unit1";
+import { unit2 as linearAlgebraUnit2 } from "./linearalgebra/unit2";
+import { unit3 as linearAlgebraUnit3 } from "./linearalgebra/unit3";
+import { unit4 as linearAlgebraUnit4 } from "./linearalgebra/unit4";
+import { unit5 as linearAlgebraUnit5 } from "./linearalgebra/unit5";
+import { unit6 as linearAlgebraUnit6 } from "./linearalgebra/unit6";
+import { unit7 as linearAlgebraUnit7 } from "./linearalgebra/unit7";
+import { unit8 as linearAlgebraUnit8 } from "./linearalgebra/unit8";
+import { unit1 as odeUnit1 } from "./ode/unit1";
+import { unit2 as odeUnit2 } from "./ode/unit2";
+import { unit3 as odeUnit3 } from "./ode/unit3";
+import { unit4 as odeUnit4 } from "./ode/unit4";
+import { unit5 as odeUnit5 } from "./ode/unit5";
+import { unit6 as odeUnit6 } from "./ode/unit6";
+import { isWritten, type Course, type Lesson } from "./types";
 
 // The full path, in the order it should be taken. Lessons without content
 // are listed so the whole road is visible; they become available as they
@@ -86,19 +132,14 @@ export const COURSES: Course[] = [
     tagline: "Angles, circles and waves: the functions that describe rotation.",
     prereqs: ["algebra-2", "geometry"],
     units: [
-      plannedUnit("Angles", ["Degrees and radians", "Arc length and sector area", "Angular speed"]),
-      plannedUnit("Right-Triangle Trigonometry", ["Sine, cosine and tangent as ratios", "Solving right triangles", "Reciprocal functions"]),
-      plannedUnit("The Unit Circle", ["Trig functions of any angle", "Reference angles", "Exact values"]),
-      plannedUnit("Graphs of Trig Functions", ["Graphing sine and cosine", "Amplitude, period and phase", "Graphs of tangent and the others"]),
-      plannedUnit("Identities", [
-        "The Pythagorean identities",
-        "Sum and difference formulas",
-        "Double- and half-angle formulas",
-        "Proving identities",
-      ]),
-      plannedUnit("Inverse Functions and Equations", ["Inverse trig functions", "Solving trig equations"]),
-      plannedUnit("Oblique Triangles", ["The law of sines", "The law of cosines", "Area of a triangle"]),
-      plannedUnit("Polar Coordinates and Vectors", ["Polar coordinates", "Vectors in the plane", "Complex numbers in polar form", "De Moivre's theorem"]),
+      trigonometryUnit1,
+      trigonometryUnit2,
+      trigonometryUnit3,
+      trigonometryUnit4,
+      trigonometryUnit5,
+      trigonometryUnit6,
+      trigonometryUnit7,
+      trigonometryUnit8,
     ],
   },
   {
@@ -107,14 +148,14 @@ export const COURSES: Course[] = [
     tagline: "College algebra: functions as objects, matrices, conics and the bridge to calculus.",
     prereqs: ["trigonometry"],
     units: [
-      plannedUnit("The Function Toolkit", ["Parent functions", "Combining functions", "Piecewise functions", "Rates of change"]),
-      plannedUnit("Polynomial and Rational Analysis", ["Zeros and multiplicity", "Polynomial inequalities", "Rational functions in full"]),
-      plannedUnit("Exponential and Logarithmic Models", ["Compound and continuous interest", "Logistic growth", "Fitting models to data"]),
-      plannedUnit("Systems and Matrices", ["Systems in three variables", "Matrices and row operations", "Determinants and Cramer's rule", "Partial fractions"]),
-      plannedUnit("Conic Sections", ["Parabolas", "Ellipses", "Hyperbolas", "Rotation of axes"]),
-      plannedUnit("Parametric Equations", ["Parametric curves", "Eliminating the parameter"]),
-      plannedUnit("Sequences, Series and Induction", ["Mathematical induction", "Convergence intuition"]),
-      plannedUnit("A Preview of Calculus", ["Limits by tables and graphs", "The tangent line problem", "The area problem"]),
+      algebra3Unit1,
+      algebra3Unit2,
+      algebra3Unit3,
+      algebra3Unit4,
+      algebra3Unit5,
+      algebra3Unit6,
+      algebra3Unit7,
+      algebra3Unit8,
     ],
   },
   {
@@ -123,31 +164,12 @@ export const COURSES: Course[] = [
     tagline: "Limits, derivatives and the first integrals.",
     prereqs: ["algebra-3"],
     units: [
-      plannedUnit("Limits", ["The idea of a limit", "Limit laws", "The formal epsilon-delta definition", "Continuity", "Limits at infinity"]),
-      plannedUnit("The Derivative", ["Instantaneous rate of change", "The derivative as a limit", "The derivative as a function", "Differentiability"]),
-      plannedUnit("Differentiation Rules", [
-        "Power rule, derived",
-        "Product and quotient rules",
-        "Derivatives of trig functions",
-        "The chain rule",
-        "Exponential and logarithmic derivatives",
-      ]),
-      plannedUnit("Implicit Differentiation", ["Implicit differentiation", "Derivatives of inverse functions", "Related rates"]),
-      plannedUnit("Applications of Derivatives", [
-        "Extreme values",
-        "The mean value theorem",
-        "Curve sketching",
-        "Optimization",
-        "Linear approximation and Newton's method",
-        "L'Hôpital's rule",
-      ]),
-      plannedUnit("Integrals", [
-        "Antiderivatives",
-        "Area and Riemann sums",
-        "The definite integral",
-        "The fundamental theorem of calculus",
-        "Substitution",
-      ]),
+      calculus1Unit1,
+      calculus1Unit2,
+      calculus1Unit3,
+      calculus1Unit4,
+      calculus1Unit5,
+      calculus1Unit6,
     ],
   },
   {
@@ -156,25 +178,11 @@ export const COURSES: Course[] = [
     tagline: "Integration techniques, applications and infinite series.",
     prereqs: ["calculus-1"],
     units: [
-      plannedUnit("Applications of Integration", ["Area between curves", "Volumes by slicing", "Volumes by shells", "Arc length", "Work and other physics"]),
-      plannedUnit("Techniques of Integration", [
-        "Integration by parts",
-        "Trigonometric integrals",
-        "Trigonometric substitution",
-        "Partial fractions",
-        "Numerical integration",
-        "Improper integrals",
-      ]),
-      plannedUnit("Sequences and Series", [
-        "Sequences and their limits",
-        "Series and partial sums",
-        "The integral test",
-        "Comparison tests",
-        "Alternating series",
-        "Ratio and root tests",
-      ]),
-      plannedUnit("Power Series", ["Power series and convergence", "Taylor and Maclaurin series", "Taylor's remainder"]),
-      plannedUnit("Parametric and Polar Calculus", ["Calculus with parametric curves", "Areas and lengths in polar coordinates"]),
+      calculus2Unit1,
+      calculus2Unit2,
+      calculus2Unit3,
+      calculus2Unit4,
+      calculus2Unit5,
     ],
   },
   {
@@ -183,35 +191,11 @@ export const COURSES: Course[] = [
     tagline: "Multivariable and vector calculus in three dimensions.",
     prereqs: ["calculus-2"],
     units: [
-      plannedUnit("Vectors and 3D Space", ["Coordinates in space", "Vectors and the dot product", "The cross product", "Lines and planes", "Surfaces"]),
-      plannedUnit("Vector-Valued Functions", ["Space curves", "Derivatives and integrals of curves", "Arc length and curvature", "Motion in space"]),
-      plannedUnit("Partial Derivatives", [
-        "Functions of several variables",
-        "Limits and continuity",
-        "Partial derivatives",
-        "Tangent planes",
-        "The multivariable chain rule",
-        "Gradient and directional derivatives",
-        "Maxima and minima",
-        "Lagrange multipliers",
-      ]),
-      plannedUnit("Multiple Integrals", [
-        "Double integrals",
-        "Double integrals in polar coordinates",
-        "Triple integrals",
-        "Cylindrical and spherical coordinates",
-        "Change of variables and the Jacobian",
-      ]),
-      plannedUnit("Vector Calculus", [
-        "Vector fields",
-        "Line integrals",
-        "Conservative fields",
-        "Green's theorem",
-        "Curl and divergence",
-        "Surface integrals",
-        "Stokes' theorem",
-        "The divergence theorem",
-      ]),
+      calculus3Unit1,
+      calculus3Unit2,
+      calculus3Unit3,
+      calculus3Unit4,
+      calculus3Unit5,
     ],
   },
   {
@@ -220,14 +204,14 @@ export const COURSES: Course[] = [
     tagline: "Vectors, matrices and linear maps: the geometry of many dimensions.",
     prereqs: ["algebra-3"],
     units: [
-      plannedUnit("Linear Systems", ["Systems as rows and as columns", "Gaussian elimination", "Row echelon form", "Solution sets"]),
-      plannedUnit("Vectors", ["Vectors and linear combinations", "Span", "Linear independence"]),
-      plannedUnit("Matrices", ["Matrix operations", "Matrices as linear transformations", "Composition and matrix multiplication", "The inverse of a matrix"]),
-      plannedUnit("Determinants", ["Determinants as signed volume", "Computing determinants", "Cramer's rule"]),
-      plannedUnit("Vector Spaces", ["Vector spaces and subspaces", "Null space and column space", "Basis and dimension", "Rank", "Change of basis"]),
-      plannedUnit("Orthogonality", ["Inner products and length", "Orthogonal projections", "Gram–Schmidt", "Least squares"]),
-      plannedUnit("Eigenvalues", ["Eigenvalues and eigenvectors", "The characteristic polynomial", "Diagonalization", "Symmetric matrices"]),
-      plannedUnit("Singular Value Decomposition", ["The SVD", "Low-rank approximation"]),
+      linearAlgebraUnit1,
+      linearAlgebraUnit2,
+      linearAlgebraUnit3,
+      linearAlgebraUnit4,
+      linearAlgebraUnit5,
+      linearAlgebraUnit6,
+      linearAlgebraUnit7,
+      linearAlgebraUnit8,
     ],
   },
   {
@@ -236,25 +220,12 @@ export const COURSES: Course[] = [
     tagline: "Equations of change: modeling with derivatives and solving them.",
     prereqs: ["calculus-2", "linear-algebra"],
     units: [
-      plannedUnit("First-Order Equations", [
-        "What a differential equation is",
-        "Direction fields",
-        "Separable equations",
-        "Linear equations and integrating factors",
-        "Exact equations",
-        "Existence and uniqueness",
-      ]),
-      plannedUnit("Modeling", ["Growth and decay", "Newton's law of cooling", "Mixing problems", "Euler's method"]),
-      plannedUnit("Second-Order Linear Equations", [
-        "Homogeneous equations with constant coefficients",
-        "Complex and repeated roots",
-        "Undetermined coefficients",
-        "Variation of parameters",
-        "Springs, oscillation and resonance",
-      ]),
-      plannedUnit("Laplace Transforms", ["The Laplace transform", "Solving initial value problems", "Step functions and impulses"]),
-      plannedUnit("Systems of Equations", ["Systems as matrices", "The eigenvalue method", "Phase portraits", "Nonlinear systems and stability"]),
-      plannedUnit("Series Solutions", ["Power series solutions", "Ordinary and singular points"]),
+      odeUnit1,
+      odeUnit2,
+      odeUnit3,
+      odeUnit4,
+      odeUnit5,
+      odeUnit6,
     ],
   },
 ];
