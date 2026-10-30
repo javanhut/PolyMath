@@ -1,20 +1,6 @@
 import { useMemo, type KeyboardEvent, type Ref } from "react";
-import { parse, parseEquation, toLatex } from "../math/expr";
+import { previewLatex } from "../math/preview";
 import { Tex } from "./RichText";
-
-function preview(input: string): string | null {
-  const text = input.trim();
-  if (!text || /^[a-zA-Z]+(\s+[a-zA-Z]+)+$/.test(text)) return null;
-  try {
-    if (text.includes("=")) {
-      const [l, r] = parseEquation(text);
-      return `${toLatex(l)} = ${toLatex(r)}`;
-    }
-    return toLatex(parse(text));
-  } catch {
-    return null;
-  }
-}
 
 /** A text box for typed math, with a live rendering of how it was read. */
 export function MathInput({
@@ -30,7 +16,7 @@ export function MathInput({
   disabled?: boolean;
   inputRef?: Ref<HTMLInputElement>;
 }) {
-  const latex = useMemo(() => preview(value), [value]);
+  const latex = useMemo(() => previewLatex(value), [value]);
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();

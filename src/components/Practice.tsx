@@ -4,9 +4,11 @@ import { checkAnswer, type Verdict } from "../math/check";
 import { rng } from "../math/random";
 import { useProgress } from "../progress";
 import { MASTERY_STREAK } from "../shared";
-import { Feedback, StepList } from "./Blocks";
+import { Choices, Feedback, StepList } from "./Blocks";
 import { MathInput } from "./MathInput";
 import { Inline } from "./RichText";
+import { Diagram } from "./widgets/Diagram";
+import { Plot } from "./widgets/Plot";
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 31);
 
@@ -54,9 +56,9 @@ export function Practice({ courseId, lesson }: { courseId: string; lesson: Lesso
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
-  const submit = () => {
+  const submit = (value = input) => {
     if (answered) return next();
-    const v = checkAnswer(input, problem);
+    const v = checkAnswer(value, problem);
     setVerdict(v);
     // Unreadable or unsimplified answers get feedback but aren't scored, so the learner can fix them.
     if (v.status === "correct" || v.status === "incorrect") {
@@ -91,15 +93,41 @@ export function Practice({ courseId, lesson }: { courseId: string; lesson: Lesso
         <Inline text={problem.prompt} />
       </div>
 
-      <div className="flex items-start gap-2">
-        <MathInput value={input} onChange={setInput} onSubmit={submit} disabled={answered} inputRef={inputRef} />
-        <button
-          onClick={submit}
-          className={`rounded-lg px-4 py-2 font-medium text-paper ${answered ? "bg-good" : "bg-accent"}`}
-        >
-          {answered ? "Next" : "Check"}
-        </button>
-      </div>
+      {problem.figure && (
+        <div className="mb-4">
+          {problem.figure.kind === "diagram" ? <Diagram key={seed} {...problem.figure} /> : <Plot key={seed} {...problem.figure} />}
+        </div>
+      )}
+
+      {problem.choices ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <Choices
+            choices={problem.choices}
+            picked={input || null}
+            correct={answered ? problem.accept?.[0] : undefined}
+            disabled={answered}
+            onPick={(c) => {
+              setInput(c);
+              submit(c);
+            }}
+          />
+          {answered && (
+            <button onClick={next} className="rounded-lg bg-good px-4 py-2 font-medium text-paper">
+              Next
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-start gap-2">
+          <MathInput value={input} onChange={setInput} onSubmit={() => submit()} disabled={answered} inputRef={inputRef} />
+          <button
+            onClick={() => submit()}
+            className={`rounded-lg px-4 py-2 font-medium text-paper ${answered ? "bg-good" : "bg-accent"}`}
+          >
+            {answered ? "Next" : "Check"}
+          </button>
+        </div>
+      )}
 
       <div className="mt-1 space-y-2">
         <Feedback verdict={verdict} />

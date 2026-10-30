@@ -1,5 +1,29 @@
 import { unit1 } from "./algebra1/unit1";
 import { unit2 } from "./algebra1/unit2";
+import { unit3 } from "./algebra1/unit3";
+import { unit4 } from "./algebra1/unit4";
+import { unit5 } from "./algebra1/unit5";
+import { unit6 } from "./algebra1/unit6";
+import { unit7 } from "./algebra1/unit7";
+import { unit8 } from "./algebra1/unit8";
+import { unit9 } from "./algebra1/unit9";
+import { unit1 as geometryUnit1 } from "./geometry/unit1";
+import { unit2 as geometryUnit2 } from "./geometry/unit2";
+import { unit3 as geometryUnit3 } from "./geometry/unit3";
+import { unit4 as geometryUnit4 } from "./geometry/unit4";
+import { unit5 as geometryUnit5 } from "./geometry/unit5";
+import { unit6 as geometryUnit6 } from "./geometry/unit6";
+import { unit7 as geometryUnit7 } from "./geometry/unit7";
+import { unit8 as geometryUnit8 } from "./geometry/unit8";
+import { unit9 as geometryUnit9 } from "./geometry/unit9";
+import { unit1 as algebra2Unit1 } from "./algebra2/unit1";
+import { unit2 as algebra2Unit2 } from "./algebra2/unit2";
+import { unit3 as algebra2Unit3 } from "./algebra2/unit3";
+import { unit4 as algebra2Unit4 } from "./algebra2/unit4";
+import { unit5 as algebra2Unit5 } from "./algebra2/unit5";
+import { unit6 as algebra2Unit6 } from "./algebra2/unit6";
+import { unit7 as algebra2Unit7 } from "./algebra2/unit7";
+import { unit8 as algebra2Unit8 } from "./algebra2/unit8";
 import { isWritten, plannedUnit, type Course, type Lesson } from "./types";
 
 // The full path, in the order it should be taken. Lessons without content
@@ -14,48 +38,13 @@ export const COURSES: Course[] = [
     units: [
       unit1,
       unit2,
-      plannedUnit("Linear Inequalities", [
-        "Inequalities and the number line",
-        "Solving inequalities (and why the sign flips)",
-        "Compound inequalities",
-        "Absolute value equations and inequalities",
-      ]),
-      plannedUnit("Functions and Graphs", [
-        "The coordinate plane",
-        "What a function is",
-        "Slope as a rate of change",
-        "Slope-intercept form",
-        "Point-slope and standard form",
-        "Parallel and perpendicular lines",
-      ]),
-      plannedUnit("Systems of Linear Equations", [
-        "Solving systems by graphing",
-        "Substitution",
-        "Elimination",
-        "Modeling with systems",
-      ]),
-      plannedUnit("Exponents and Polynomials", [
-        "Exponent rules from repeated multiplication",
-        "Zero and negative exponents",
-        "Scientific notation",
-        "Adding and subtracting polynomials",
-        "Multiplying polynomials",
-        "Special products",
-      ]),
-      plannedUnit("Factoring", [
-        "Greatest common factor",
-        "Factoring trinomials",
-        "Difference of squares and perfect squares",
-        "A factoring strategy",
-      ]),
-      plannedUnit("Quadratic Equations", [
-        "Parabolas and their graphs",
-        "Solving by factoring",
-        "Square roots and completing the square",
-        "Deriving the quadratic formula",
-        "The discriminant",
-      ]),
-      plannedUnit("Radicals", ["Simplifying square roots", "Operations with radicals", "Radical equations"]),
+      unit3,
+      unit4,
+      unit5,
+      unit6,
+      unit7,
+      unit8,
+      unit9,
     ],
   },
   {
@@ -64,20 +53,15 @@ export const COURSES: Course[] = [
     tagline: "Logic and proof, shapes and space, from axioms to coordinates.",
     prereqs: ["algebra-1"],
     units: [
-      plannedUnit("Foundations and Logic", [
-        "Points, lines and planes",
-        "Angles and their measure",
-        "Conditional statements",
-        "Your first proofs",
-      ]),
-      plannedUnit("Parallel Lines", ["Angles formed by a transversal", "Proving lines parallel", "The angle sum of a triangle"]),
-      plannedUnit("Triangles and Congruence", ["Congruent figures", "SSS, SAS, ASA, AAS", "Isosceles and equilateral triangles", "Triangle inequalities"]),
-      plannedUnit("Similarity", ["Ratios and proportions", "Similar triangles", "Proportions in triangles"]),
-      plannedUnit("Right Triangles", ["The Pythagorean theorem and its proofs", "Special right triangles", "Distance in the plane"]),
-      plannedUnit("Polygons and Quadrilaterals", ["Angles of polygons", "Parallelograms", "Rectangles, rhombuses and squares", "Trapezoids and kites"]),
-      plannedUnit("Circles", ["Arcs and central angles", "Inscribed angles", "Tangents and chords", "Equations of circles"]),
-      plannedUnit("Area and Volume", ["Area from first principles", "Circumference and area of circles", "Surface area", "Volume and Cavalieri's principle"]),
-      plannedUnit("Transformations", ["Translations, reflections and rotations", "Dilations", "Symmetry"]),
+      geometryUnit1,
+      geometryUnit2,
+      geometryUnit3,
+      geometryUnit4,
+      geometryUnit5,
+      geometryUnit6,
+      geometryUnit7,
+      geometryUnit8,
+      geometryUnit9,
     ],
   },
   {
@@ -86,32 +70,14 @@ export const COURSES: Course[] = [
     tagline: "Functions in depth, polynomials, complex numbers, exponentials and logarithms.",
     prereqs: ["algebra-1", "geometry"],
     units: [
-      plannedUnit("Functions in Depth", ["Domain and range", "Function notation and composition", "Inverse functions", "Transformations of graphs"]),
-      plannedUnit("Quadratics and Complex Numbers", ["Vertex form", "Imaginary and complex numbers", "Complex solutions of quadratics"]),
-      plannedUnit("Polynomial Functions", [
-        "End behavior and degree",
-        "Polynomial division",
-        "The remainder and factor theorems",
-        "Rational root theorem",
-        "The fundamental theorem of algebra",
-      ]),
-      plannedUnit("Rational Expressions", [
-        "Simplifying rational expressions",
-        "Multiplying and dividing",
-        "Adding and subtracting",
-        "Rational equations",
-        "Graphs and asymptotes",
-      ]),
-      plannedUnit("Radicals and Rational Exponents", ["Nth roots", "Rational exponents", "Radical functions"]),
-      plannedUnit("Exponential and Logarithmic Functions", [
-        "Exponential growth and decay",
-        "The number e",
-        "Logarithms as inverse exponents",
-        "Properties of logarithms",
-        "Solving exponential equations",
-      ]),
-      plannedUnit("Sequences and Series", ["Arithmetic sequences", "Geometric sequences", "Sigma notation", "Infinite geometric series"]),
-      plannedUnit("Counting and Probability", ["Counting principles", "Permutations and combinations", "The binomial theorem", "Probability basics"]),
+      algebra2Unit1,
+      algebra2Unit2,
+      algebra2Unit3,
+      algebra2Unit4,
+      algebra2Unit5,
+      algebra2Unit6,
+      algebra2Unit7,
+      algebra2Unit8,
     ],
   },
   {
